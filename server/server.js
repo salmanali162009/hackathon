@@ -15,7 +15,12 @@ connectDb()
 
 app.get('/',(req,res)=>{
     res.json({
-        message:'app is running'
+        message:'hackathon app  is running'
+    })
+})
+app.get('/user',(req,res)=>{
+    res.json({
+        message:'user in np'
     })
 })
 
