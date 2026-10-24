@@ -1,30 +1,57 @@
-import dotenv from 'dotenv'
-dotenv.config()
+import app from './app.js';
+import { env } from './config/env.js';
+import { connectDb, closeDb } from './config/db.js';
 
-import express from 'express'
-import cors from 'cors'
-import connectDb from './config/db.js'
+let server;
 
-const app = express()
-const PORT = process.env.PORT || 5000
+const startServer = async () => {
+  try {
+    console.log(`[BOOT] Starting HCM Lite Backend in ${env.NODE_ENV} mode...`);
 
-app.use(cors());
-app.use(express.json())
-connectDb()
+    // Ensure database connection before accepting incoming traffic
+    await connectDb();
 
+    server = app.listen(env.PORT, () => {
+      console.log(`[READY] Server running on http://localhost:${env.PORT}`);
+      console.log(`[READY] Health check available at http://localhost:${env.PORT}/api/health`);
+    });
+  } catch (error) {
+    console.error(`[FATAL] Failed to start server: ${error.message}`);
+    process.exit(1);
+  }
+};
 
-app.get('/',(req,res)=>{
-    res.json({
-        message:'hackathon app  is running'
-    })
-})
-app.get('/user',(req,res)=>{
-    res.json({
-        message:'user in np'
-    })
-})
+// Graceful shutdown
+const shutdown = async (signal) => {
+  console.log(`\n[SHUTDOWN] Received ${signal}. Closing server gracefully...`);
 
+  if (server) {
+    server.close(async () => {
+      console.log('[SHUTDOWN] HTTP server closed.');
+      await closeDb();
+      process.exit(0);
+    });
 
-app.listen(PORT,()=>{
-    console.log('app is running or PORT '+PORT);
-})
+    // Force exit if shutdown hangs beyond 10 seconds
+    setTimeout(() => {
+      console.error('[SHUTDOWN] Forcefully shutting down after timeout.');
+      process.exit(1);
+    }, 10000);
+  } else {
+    process.exit(0);
+  }
+};
+
+process.on('SIGINT', () => shutdown('SIGINT'));
+process.on('SIGTERM', () => shutdown('SIGTERM'));
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('[UNHANDLED REJECTION] at:', promise, 'reason:', reason);
+});
+
+process.on('uncaughtException', (error) => {
+  console.error('[UNCAUGHT EXCEPTION]:', error);
+  process.exit(1);
+});
+
+startServer();

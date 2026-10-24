@@ -1,14 +1,48 @@
-import mongoose from "mongoose";
+import mongoose from 'mongoose';
+import { env } from './env.js';
 
-const  connectDb = async ()=>{
-    try{
-        const connectionInstance = await mongoose.connect(process.env.MONGODB_URI)
-        console.log('db connected !')
+let isConnected = false;
 
-    }catch(err){
-       console.log(err)
-    }
+export const connectDb = async (uri = env.MONGODB_URI) => {
+  if (isConnected && mongoose.connection.readyState === 1) {
+    return mongoose.connection;
+  }
 
-}
+  if (!uri) {
+    throw new Error('MongoDB connection URI is not configured.');
+  }
 
-export default connectDb
+  try {
+    const conn = await mongoose.connect(uri, {
+      serverSelectionTimeoutMS: 10000,
+      autoIndex: true,
+    });
+
+    isConnected = true;
+    console.log(`[DB] Connected to MongoDB: ${conn.connection.host}/${conn.connection.name}`);
+    return conn.connection;
+  } catch (error) {
+    console.error(`[DB] Connection error: ${error.message}`);
+    throw error;
+  }
+};
+
+mongoose.connection.on('disconnected', () => {
+  isConnected = false;
+  console.warn('[DB] MongoDB disconnected.');
+});
+
+mongoose.connection.on('reconnected', () => {
+  isConnected = true;
+  console.log('[DB] MongoDB reconnected.');
+});
+
+export const closeDb = async () => {
+  if (mongoose.connection.readyState !== 0) {
+    await mongoose.connection.close();
+    isConnected = false;
+    console.log('[DB] MongoDB connection closed.');
+  }
+};
+
+export default connectDb;
