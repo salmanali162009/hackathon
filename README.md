@@ -1,3 +1,7 @@
+
+https://hackathon-hcm.vercel.app/
+
+
 # HCM Lite — AI-Assisted Human Capital Management System
 
 An AI-powered Human Capital Management (HCM) web application designed to simplify everyday HR operations through role-based access, employee management, attendance tracking, leave management, payroll, analytics, and an AI assistant.
